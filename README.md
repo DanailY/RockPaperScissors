@@ -1,1 +1,1 @@
-# RockPaperScissors
+# RockPaperScissors online game.
