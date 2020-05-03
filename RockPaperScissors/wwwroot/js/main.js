@@ -1,72 +1,89 @@
+//import { signalR } from "./signalr/dist/browser/signalr";
+
 const choices = document.querySelectorAll('.choice');
 const score = document.getElementById('score');
 const result = document.getElementById('result');
 const restart = document.getElementById('restart');
 const modal = document.querySelector('.modal');
+const connection = new signalR.HubConnectionBuilder().withUrl("/gameHub").build();
+
 const scoreboard = {
     player: 0,
     computer: 0
 };
 
+let playersStats = [{
+    user: '',
+    shape: ''
+}];
+
+
+
+connection.on("ReceiveShape", function (user, shape) {
+    playersStats.push({ user, shape });
+    console.log(user, shape)
+})
+
+connection.start();
+
 // Play game
 function play(e) {
     restart.style.display = 'inline-block';
-    const playerChoice = e.target.id;
-    const computerChoice = getComputerChoice();
-    const winner = getWinner(playerChoice, computerChoice);
-    showWinner(winner, computerChoice);
+    var playerChoice = e.target.id;
+    var user = sessionStorage.getItem('user');
+    connection.invoke("SendChosenShape", user, playerChoice)
+        .then((r) => {
+            if (playersStats.length === 3) {
+                let sp = playersStats.pop();
+                let fp = playersStats.pop();
+                const winner = getWinner(fp, sp);
 
-};
-
-// Get computers choice
-function getComputerChoice() {
-    const rand = Math.random();
-
-    if (rand < 0.34) {
-        return 'rock';;
-    } else if (rand <= 0.67) {
-        return 'paper';
-    } else {
-        return 'scissors';
-    }
+                console.log(winner);
+                showWinner(winner, fp, sp);
+            }
+        })
+        .catch(function (err) {
+            return console.error(err.toString());
+        });
 };
 
 // Get game winner
-function getWinner(p, c) {
-    if (p === c) {
+function getWinner(fp, sp) {
+    if (fp.shape === sp.shape) {
         return 'draw';
-    } else if (p === 'rock') {
-        if (c === 'paper') {
-            return 'computer';
+    } else if (fp.shape === 'rock') {
+        if (sp.shape === 'paper') {
+            return sp.user;
         } else {
-            return 'player';
+            return fp.user;
         }
-    } else if (p === 'paper') {
-        if (c === 'scissors') {
-            return 'computer';
+    } else if (fp.shape === 'paper') {
+        if (sp.shape === 'scissors') {
+            return sp.user;
         } else {
-            return 'player';
+            return fp.user;
         }
-    } else if (p === 'scissors') {
-        if (c === 'rock') {
-            return 'computer';
+    } else if (fp.shape === 'scissors') {
+        if (sp.shape === 'rock') {
+            return sp.user;
         } else {
-            return 'player';
+            return fp.user;
         }
     }
 
 }
 
 // Show winner
-function showWinner(winner, computerChoice) {
-    if (winner === 'player') {
+function showWinner(winner, fp, sp) {
+    //TODO: to implement the logic for displaying the result
+    if (winner === fp.user) {
         // inc player score
         scoreboard.player++;
         //Show modal result
         result.innerHTML = `
             <h1 class="text-win">You win</h1>
-            <i class="fas fa-hand-${computerChoice} fa-10x"></i>
-            <p>Computer Chose <strong>${computerChoice.charAt(0).toUpperCase() + computerChoice.slice(1)}</strong></p>
+            <i class="fas fa-hand-${sp.shape} fa-10x"></i>
+            <p>Computer Chose <strong>${sp.shape.charAt(0).toUpperCase() + sp.shape.slice(1)}</strong></p>
             `;
     } else if (winner === 'computer') {
         // inc computer score
